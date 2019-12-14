@@ -4,6 +4,7 @@ const graphqlHttp = require('express-graphql');
 const { buildSchema } = require('graphql');
 const mongoose = require('mongoose');
 require('dotenv/config');
+const bcrypt = require('bcryptjs');
 
 
 const app = express();
@@ -13,6 +14,7 @@ const app = express();
 
 //import from model
 const Event = require('./models/Events');
+const User = require('./models/User');
 
 //Middleware to pass json
 app.use(bodyParser.json());
@@ -34,6 +36,17 @@ app.use('/graphql', graphqlHttp({
 			date: String!
 		}
 
+		type User {
+			_id: ID!,
+			email: String!,
+			password: String!
+		}
+
+		input UserInput {
+			email: String!,
+			password: String!
+		}
+
 		input EventInput {
 			title: String!
 			description: String!
@@ -47,6 +60,7 @@ app.use('/graphql', graphqlHttp({
 
 		type RootMutation {
 			createEvent(eventInput: EventInput): Event 
+			createUser(userInput: UserInput): User
 		}
 
 		schema {
@@ -100,7 +114,25 @@ app.use('/graphql', graphqlHttp({
 				console.log(err);
 				throw err;
 			});
-			}
+		},
+
+		createUser: (args) => {
+			return bycrpt.hash(args.userInput.password, 12)
+			.then(hasedPassword => {
+				const user = new User({
+					email: args.userInput.email,
+					password: hasedPassword
+				});
+				return user.save();
+			})
+			.then(result => {
+				return { ...result._doc }
+			})
+			.catch(err => {
+				throw err;
+			});
+			
+		}
 	},
 
 	graphiql: true, //graphql debuging
