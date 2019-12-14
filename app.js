@@ -2,11 +2,17 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const graphqlHttp = require('express-graphql');
 const { buildSchema } = require('graphql');
+const mongoose = require('mongoose');
+require('dotenv/config');
+
 
 const app = express();
 
 //Event array
-const aEvents = [];
+//const aEvents = [];
+
+//import from model
+const Event = require('./models/Events');
 
 //Middleware to pass json
 app.use(bodyParser.json());
@@ -53,23 +59,47 @@ app.use('/graphql', graphqlHttp({
 	//also known as the resolver in graphql
 	rootValue: {
 		events: () => { //query
-
+			return Event.find()
+			.then(events => {
+				return events.map(event => {
+					return { ...event._doc };
+				});
+			})
+			.catch(err => {
+				throw err;
+				console.log(err);
+			});
 			//return ['Romantic dinner', 'Sailing', 'Gardening'];
-			return aEvents;
+			//return aEvents;
 		}, 
 
 		createEvent: (args) => {
 			//const eventName = args.name;
-			const event = {
-				_id: Math.random().toString(),
+			// const event = {
+			// 	_id: Math.random().toString(),
+			// 	title: args.eventInput.title,
+			// 	description: args.eventInput.description,
+			// 	price: +args.eventInput.price,
+			// 	date: args.eventInput.date
+			// };
+			const event = new Event({
 				title: args.eventInput.title,
 				description: args.eventInput.description,
 				price: +args.eventInput.price,
-				date: args.eventInput.date
-			};
-			aEvents.push(event);
-			return event;
+				date: new Date(args.eventInput.date)
+			});
 
+			//aEvents.push(event);
+			return event
+			.save()
+			.then(result => {
+				console.log(result);
+				return { ...result._doc };
+			})
+			.catch(err => {
+				console.log(err);
+				throw err;
+			});
 			}
 	},
 
@@ -84,6 +114,11 @@ app.use('/graphql', graphqlHttp({
 
 app.get('/', (req, res) => {
 	res.send("HELLO GRAPHQL");
+});
+
+//CONNECT TO DB
+mongoose.connect(process.env.DB_CONNECTION, { useNewUrlParser: true, useUnifiedTopology: true }, () => {
+	console.log("Connected to DB!!!");
 });
 
 
